@@ -1,0 +1,10 @@
+/res/asset/
+/res/asset.legacy/
+/res/screenshot/
+
+lib/XyEF.Automation.dll
+tools/*.ini
+tools/*.bmp
+tools/*.chw
+
+*.zip
