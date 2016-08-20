@@ -92,9 +92,9 @@ namespace XyEF.Automation.Model
             shouldOpenChest = true;
 
             // update IsInMainScreen
-            var gems = CombineFilesPath(@"asset\icons\", "gem.*.bmp");
+            var gems = PathHelper.CombineFilesPath(@"asset\icons\", "gem.*.bmp");
             Observable.Interval(TimeSpan.FromMilliseconds(250))
-                .Select(_ => DmServices.Image.PictureExists(Coords.ResourceArea, gems))
+                .Select(_ => DmServices.Image.PictureExists(Coords.ResourceArea, gems, 0.6))
                 .ToProperty(this, x => x.IsInMainScreen, out m_IsInMainScreen);
             //            this.WhenAnyValue(x => x.IsInMainScreen)
             //                .Dump("IsInMainScreen");
@@ -111,12 +111,14 @@ namespace XyEF.Automation.Model
                 .Select(_ => DmServices.Image.GetPictureLocation(Coords.Treasure.ChestSpawnArea, @"asset\icons\treasure-chest.bmp", 0.6))
                 .Where(x => !x.IsEmpty)
                 .Where(_ => shouldOpenChest)
-                .Do(x => DmServices.Input.LeftClick(x + Coords.Treasure.ChestOffset))
-                .Throttle(TimeSpan.FromMilliseconds(250))
-                .Subscribe(_ => this.Log().Info("一个宝箱被开启了!"));
+                .Subscribe(x =>
+                {
+                    DmServices.Input.LeftClick(x + Coords.Treasure.ChestOffset);
+                    this.Log().Info("一个宝箱被开启了!");
+                });
 
             // watching ads
-            var webAdCloseButtons = CombineFilesPath(@"asset\ads\", "web-ad-close-button.*.bmp");
+            var webAdCloseButtons = PathHelper.CombineFilesPath(@"asset\ads\", "web-ad-close-button.*.bmp");
             //            Observable.Interval(TimeSpan.FromMilliseconds(250))
             //                .Select(_ => DmServices.Image.GetPictureLocation(Coords.Ads.WatchAdConfirmationArea, @"asset\ads\watch-ad-confirmation.bmp"))
             //                .Where(x => !x.IsEmpty)
@@ -137,24 +139,20 @@ namespace XyEF.Automation.Model
             //                .Dump("close button");
             Observable.Interval(TimeSpan.FromMilliseconds(250))
                 .Where(_ => shouldWatchAd && !isWatchingAd)
-                .Where(_ => DmServices.Image.PictureExists(Coords.Ads.WatchAdConfirmationArea, @"asset\ads\watch-ad-confirmation.bmp"))
+                .Where(_ => DmServices.Image.PictureExists(Coords.Ads.WatchAdConfirmationArea, @"asset\ads\watch-ad-confirmation.bmp", 0.6))
                 .Subscribe(async _ =>
                 {
                     // retry guard
                     isWatchingAd = true;
                     using (Disposable.Create(() => isWatchingAd = false))
                     {
-                        DmServices.Image.PrintScreen(Coords.PhoneScreen, $"screenshot\\confirm-watch-ad.bmp");
-                        
                         // watch ad
                         DmServices.Input.LeftClick(Coords.Ads.WatchAdButton);
                         await Task.Delay(500);
 
-                        DmServices.Image.PrintScreen(Coords.PhoneScreen, $"screenshot\\no-ad-message.bmp");
-                        
                         // confirm there is no ad available
                         int retry = 0;
-                        while (!DmServices.Image.PictureExists(Coords.Ads.AdUnavailableMessageArea, @"asset\ads\ad-unavailable-message.bmp"))
+                        while (!DmServices.Image.PictureExists(Coords.Ads.AdUnavailableMessageArea, @"asset\ads\ad-unavailable-message.bmp", 0.6))
                         {
                             if (retry++ > 5)
                             {
@@ -234,7 +232,7 @@ namespace XyEF.Automation.Model
                     }
                 });
 
-            var unitPurchaseButtons = CombineFilesPath(@"asset\unit\", "*-medal-purchase.bmp");
+            var unitPurchaseButtons = PathHelper.CombineFilesPath(@"asset\unit\", "*-medal-purchase.bmp");
             //            Observable.Interval(TimeSpan.FromMilliseconds(1000))
             //                .Select(_ => DmServices.Image.GetPictureLocation(Coords.PhoneScreen, unitPurchaseButtons, 0.9))
             //                .Where(x => !x.IsEmpty)
@@ -259,16 +257,6 @@ namespace XyEF.Automation.Model
                         }
                     }
                 });
-        }
-
-        /// <summary>Join all files matched by the filter, according to DM's path syntax</summary>
-        private static string CombineFilesPath(string directory, string filter)
-        {
-            return string.Join("|",
-                Directory.GetFiles(Path.Combine(DmServices.ResourcePath, directory), filter)
-                .Select(x => DmServices.ResourceUri.MakeRelativeUri(new Uri(x)).OriginalString)
-                // aesthetic fix
-                .Select(x => x.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)));
         }
     }
     public class GameStats
@@ -295,12 +283,13 @@ namespace XyEF.Automation.Model
 
             commands = new CommandCollection()
             {
+                #region ss Command
                 new Command("ss")
                 {
                     new CommandArgs(() => DmServices.Image.PrintScreen(Coords.PhoneScreen)),
                     new CommandArgs("--full", () => DmServices.Image.PrintScreen(Coords.EmulatorArea)),
                     CommandArgs.Create("{x1} {y1} {x2} {y2}",
-                        new Regex(string.Join(" ", Enumerable.Repeat(@"(?<args>\d+)", 4))),
+                        new Regex(@"^(?<args>\d+) (?<args>\d+) (?<args>\d+) (?<args>\d+)$"),
                         m => DmServices.Image.PrintScreen(new RECT
                         (
                             int.Parse(m.Groups["args"].Captures[0].Value),
@@ -308,12 +297,25 @@ namespace XyEF.Automation.Model
                             int.Parse(m.Groups["args"].Captures[2].Value),
                             int.Parse(m.Groups["args"].Captures[3].Value)
                         ))),
-                    new CommandArgs("--coords {name}", notImplemented),
+                    //                    CommandArgs.Create("--coords {name}", notImplemented),
+                    //                        new Regex(@"^--coords (?<identifier>\w[\w\d]+(\.\w[\w\d]+)*)$"),
+                    //                        m => GetCoords(m.
                 },
+                #endregion
+                #region findpic Command
                 new Command("findpic")
                 {
-                    new CommandArgs("--coord {name} {pic}", notImplemented),
+                    CommandArgs.Create("{name} {pic} {similarity}?",
+                        new Regex(@"^(?<identifier>\w[\w\d]+(\.\w[\w\d]+)*) (?<picture>[\w\d\.\-]+([\\/][\w\d\.\-]+)*)( (?<similarity>\d(\.\d)?))?$"),
+                        m => new
+                        {
+                            Area = GetCoords(m.Groups["identifier"].Value),
+                            Picture = m.Groups["picture"].Value,
+                            Similarity = m.Groups["similarity"].Success ? double.Parse(m.Groups["similarity"].Value) : 1
+                        },
+                        args => Logger.Instance.Info(DmServices.Image.GetPictureLocation(args.Area, args.Picture, args.Similarity))),
                 }
+                #endregion
             };
         }
 
@@ -341,6 +343,27 @@ namespace XyEF.Automation.Model
         }
 
         private static readonly TypeNamedLogger Logger = new TypeNamedLogger();
+    }
+    public static partial class CommandHandler
+    {
+        private static RECT GetCoords(string path)
+        {
+            var node = typeof(Coords);
+
+            foreach (var segment in path.Split('.'))
+            {
+                var field = node.GetField(segment);
+                if (field != null && field.FieldType == typeof(RECT))
+                    return (RECT)field.GetValue(null);
+
+                node = node.GetNestedType(segment);
+                if (node == null)
+                    throw new ArgumentException($"'{path}' 不是一个有效的标识符: '{segment}' 不存在");
+            }
+
+            // path ended with a class identifier
+            throw new ArgumentException("'{path}' 不是一个有效的标识符");
+        }
     }
     public static partial class CommandHandler
     {
@@ -417,9 +440,11 @@ namespace XyEF.Automation.Model
             }
 
             public static CommandArgs Empty(Action callback) => new CommandArgs(callback);
-            public static CommandArgs Create(string template, Action callback) => new CommandArgs(template, callback);
+            public static CommandArgs Create(string template, Action callback) => null;
             public static CommandArgs Create(string template, Regex argsMatcher, Action<Match> callback) =>
-                new CommandArgs(template, argsMatcher.IsMatch, x => callback(argsMatcher.Match(x)));
+                 new CommandArgs(template, argsMatcher.IsMatch, x => callback(argsMatcher.Match(x)));
+            public static CommandArgs Create<T>(string template, Regex argMatcher, Func<Match, T> argParser, Action<T> callback) =>
+                new CommandArgs(template, argMatcher.IsMatch, x => callback(argParser(argMatcher.Match(x))));
         }
     }
 
@@ -429,7 +454,7 @@ namespace XyEF.Automation.Model
         /// <summary>Again this isnt a perfect match. There is some error margin.</summary>
         public static readonly RECT PhoneScreen = new RECT(296, 30, 830, 1000).Extend(10, 5);
         public static readonly RECT ResourceArea = new RECT(296, 446, 830, 446 + 21 + 1).Extend(15, 10);
-        
+
         public static readonly Point BackButton = new Point(118, 22);
 
         public static class Treasure
@@ -481,6 +506,18 @@ namespace XyEF.Automation.Model
                 area.Top - marginY,
                 area.Right + marginX,
                 area.Bottom + marginY);
+        }
+    }
+    public static class PathHelper
+    {
+        /// <summary>Join all files matched by the filter, according to DM's path syntax</summary>
+        public static string CombineFilesPath(string directory, string filter)
+        {
+            return string.Join("|",
+                Directory.GetFiles(Path.Combine(DmServices.ResourcePath, directory), filter)
+                .Select(x => DmServices.ResourceUri.MakeRelativeUri(new Uri(x)).OriginalString)
+                // aesthetic fix
+                .Select(x => x.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)));
         }
     }
 }
