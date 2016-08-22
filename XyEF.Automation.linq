@@ -213,7 +213,7 @@ namespace XyEF.Automation.Model
             //                .Select(x => x.ToString())
             //                .Dump(@"unit\refresh-unit");
             Observable.Interval(TimeSpan.FromMilliseconds(60000)).StartWith(default(long))
-                .Select(_ => DmServices.Image.GetPictureLocation(Coords.Unit.RefreshButtonArea, @"asset\unit\refresh-button.bmp"))
+                .Select(_ => DmServices.Image.GetPictureLocation(Coords.Unit.RefreshButtonArea, @"asset\unit\refresh-button.bmp", 0.8))
                 .Where(x => !locked && !x.IsEmpty)
                 .Subscribe(async x =>
                 {
@@ -234,12 +234,12 @@ namespace XyEF.Automation.Model
 
             var unitPurchaseButtons = PathHelper.CombineFilesPath(@"asset\unit\", "*-medal-purchase.bmp");
             //            Observable.Interval(TimeSpan.FromMilliseconds(1000))
-            //                .Select(_ => DmServices.Image.GetPictureLocation(Coords.PhoneScreen, unitPurchaseButtons, 0.9))
+            //                .Select(_ => DmServices.Image.GetPictureLocation(Coords.PhoneScreen, unitPurchaseButtons, 0.8))
             //                .Where(x => !x.IsEmpty)
             //                .Select(x => x.ToString())
             //                .Dump(@"unit\unit-purchase-button");
             Observable.Interval(TimeSpan.FromMilliseconds(1000))
-                .Select(_ => DmServices.Image.GetPictureLocation(Coords.Unit.UnitPurchaseButtonArea, unitPurchaseButtons, 0.9))
+                .Select(_ => DmServices.Image.GetPictureLocation(Coords.Unit.UnitPurchaseButtonArea, unitPurchaseButtons, 0.8))
                 .Where(x => !locked && !x.IsEmpty)
                 .Subscribe(async x =>
                 {
@@ -249,7 +249,7 @@ namespace XyEF.Automation.Model
                         DmServices.Input.LeftClick(x + Coords.Unit.UnitPurchaseButtonOffset);
                         await Task.Delay(1500);
 
-                        if (DmServices.Image.PictureExists(Coords.Unit.ConfirmPurchaseCostArea, @"asset\unit\cost-medal.bmp"))
+                        if (DmServices.Image.PictureExists(Coords.Unit.ConfirmPurchaseCostArea, @"asset\unit\cost-medal.bmp", 0.8))
                         {
                             this.Log().Info("准备购买士兵");
                             DmServices.Image.PrintScreen(Coords.Unit.ConfirmPurchaseScreenshotArea, $@"screenshot\unit\{DateTime.Now:yyyy-MM-dd HH-mm-ss.fff} unit-purchase.bmp");
