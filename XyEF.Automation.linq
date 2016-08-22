@@ -297,9 +297,10 @@ namespace XyEF.Automation.Model
                             int.Parse(m.Groups["args"].Captures[2].Value),
                             int.Parse(m.Groups["args"].Captures[3].Value)
                         ))),
-                    //                    CommandArgs.Create("--coords {name}", notImplemented),
-                    //                        new Regex(@"^--coords (?<identifier>\w[\w\d]+(\.\w[\w\d]+)*)$"),
-                    //                        m => GetCoords(m.
+                    CommandArgs.Create("--coords {name}",
+                        new Regex(@"^--coords (?<identifier>\w[\w\d]+(\.\w[\w\d]+)*)$"),
+                        m => GetCoords(m.Groups["identifier"].Value),
+                        rect => DmServices.Image.PrintScreen(rect)),
                 },
                 #endregion
                 #region findpic Command
@@ -497,16 +498,6 @@ namespace XyEF.Automation.Model
         {
             return new Point(p1.X + x, p1.Y + y);
         }
-
-        /// <summary>Add some error magin to the area</summary>
-        public static RECT Extend(this RECT area, int marginX, int marginY)
-        {
-            return new RECT(
-                area.Left - marginX,
-                area.Top - marginY,
-                area.Right + marginX,
-                area.Bottom + marginY);
-        }
     }
     public static class PathHelper
     {
@@ -557,6 +548,16 @@ namespace XyEF.Automation.Services
             this.Top = top;
             this.Right = left + size.Width + 1;
             this.Bottom = top + size.Height + 1;
+        }
+
+        /// <summary>Add some error magin to the area</summary>
+        public RECT Extend(int marginX, int marginY)
+        {
+            return new RECT(
+                this.Left - marginX,
+                this.Top - marginY,
+                this.Right + marginX,
+                this.Bottom + marginY);
         }
 
         public override string ToString() => $"{{ X1={Left}, Y1={Top}, X2={Right}, Y2={Bottom} }}";
