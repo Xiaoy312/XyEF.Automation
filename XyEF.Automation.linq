@@ -26,7 +26,7 @@ namespace XyEF.Automation
 
             LicenseChecker.ThrowIfNotActivated();
 
-            var engine = new GameEngine();
+            var engine = new XyEngine();
 
             CommandHandler.StartHandleInput().Wait();
         }
@@ -68,7 +68,7 @@ namespace XyEF.Automation.Model
 
     public enum MenuTab { Quest, Unit, Dungeon, Artifact, Battle, Shop }
 
-    public class GameEngine : ReactiveObject, IEnableLogger
+    public class XyEngine : ReactiveObject, IEnableLogger
     {
         #region public bool IsInMainScreen { get; }
         private ObservableAsPropertyHelper<bool> m_IsInMainScreen;
@@ -86,7 +86,7 @@ namespace XyEF.Automation.Model
         private bool shouldWatchAd = true;
         private bool isWatchingAd = false;
 
-        public GameEngine()
+        public XyEngine()
         {
             // initialize
             shouldOpenChest = true;
